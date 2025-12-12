@@ -19,6 +19,8 @@ class Media extends Model
         'order',
     ];
 
+    protected $appends = ['url'];
+
     public function post(): BelongsTo
     {
         return $this->belongsTo(Post::class);
