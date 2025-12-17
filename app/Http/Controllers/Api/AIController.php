@@ -52,7 +52,23 @@ class AIController extends Controller
                 'model_used' => 'gpt-4',
             ]);
 
-            return response()->json($generated);
+            // Create a pending post draft for moderator approval
+            $post = Post::create([
+                'user_id' => auth()->id(),
+                'category' => $validated['category'],
+                'post_type' => $validated['post_type'],
+                'title' => $generated['title'] ?? 'Generated Post',
+                'description' => $generated['description'] ?? '',
+                'metadata' => $validated['property_data'] ?? [],
+                'ai_generated' => true,
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'draft' => $post->load(['user', 'media', 'moderator']),
+                'generated' => $generated,
+                'message' => 'Draft created and awaiting moderation',
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'AI generation failed',

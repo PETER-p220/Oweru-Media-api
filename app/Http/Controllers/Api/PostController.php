@@ -9,11 +9,20 @@ use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $posts = Post::with(['user', 'media'])
-            ->latest()
-            ->paginate(15);
+        $status = $request->query('status');
+
+        $query = Post::with(['user', 'media', 'moderator'])->latest();
+
+        // Only filter by status if explicitly provided and not 'all'
+        // For admin/moderator views, show all posts when status is 'all'
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        // If status is 'all' or not provided, show all posts (no status filter)
+
+        $posts = $query->paginate(15);
         
         return response()->json($posts);
     }
@@ -37,7 +46,9 @@ class PostController extends Controller
             'post_type' => $validated['post_type'],
             'title' => $validated['title'],
             'description' => $validated['description'],
+            'status' => 'pending',
             'metadata' => $validated['metadata'] ?? [],
+            'ai_generated' => $request->boolean('ai_generated', false),
         ]);
 
         // Handle file uploads
@@ -66,7 +77,7 @@ class PostController extends Controller
             ]);
         }
 
-        return response()->json($post->load('media'), 201);
+        return response()->json($post->load(['media', 'user', 'moderator']), 201);
     }
 
     public function show(Post $post)
@@ -87,9 +98,16 @@ class PostController extends Controller
             'metadata' => 'nullable|array',
         ]);
 
+        // If a previously rejected post is updated by its owner (admin), send it back to pending
+        if ($post->status === 'rejected') {
+            $validated['status'] = 'pending';
+            $validated['moderated_by'] = null;
+            $validated['moderation_note'] = null;
+        }
+
         $post->update($validated);
 
-        return response()->json($post->load('media'));
+        return response()->json($post->load(['media', 'user', 'moderator']));
     }
 
     public function destroy(Post $post)
@@ -109,14 +127,54 @@ class PostController extends Controller
         return response()->json(['message' => 'Post deleted successfully']);
     }
 
-    public function getByCategory($category)
+    public function getByCategory($category, Request $request)
     {
-        $posts = Post::with(['user', 'media'])
+        $status = $request->query('status', 'all');
+
+        $query = Post::with(['user', 'media', 'moderator'])
             ->where('category', $category)
-            ->latest()
-            ->paginate(15);
+            ->latest();
+
+        // Only filter by status if explicitly provided and not 'all'
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $posts = $query->paginate(15);
         
         return response()->json($posts);
+    }
+
+    public function approve(Post $post, Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! $user->isModerator()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $post->update([
+            'status' => 'approved',
+            'moderated_by' => $user->id,
+            'moderation_note' => $request->input('moderation_note'),
+        ]);
+
+        return response()->json($post->load(['user', 'media', 'moderator']));
+    }
+
+    public function reject(Post $post, Request $request)
+    {
+        $user = $request->user();
+        if (! $user || ! $user->isModerator()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $post->update([
+            'status' => 'rejected',
+            'moderated_by' => $user->id,
+            'moderation_note' => $request->input('moderation_note'),
+        ]);
+
+        return response()->json($post->load(['user', 'media', 'moderator']));
     }
 }
 

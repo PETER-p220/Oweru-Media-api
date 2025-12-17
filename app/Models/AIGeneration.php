@@ -10,6 +10,8 @@ class AIGeneration extends Model
 {
     use HasFactory;
 
+    protected $table = 'ai_generations';
+
     protected $fillable = [
         'user_id',
         'category',

@@ -19,6 +19,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Posts
     Route::apiResource('posts', PostController::class);
     Route::get('/posts/category/{category}', [PostController::class, 'getByCategory']);
+    Route::post('/posts/{post}/approve', [PostController::class, 'approve']);
+    Route::post('/posts/{post}/reject', [PostController::class, 'reject']);
     
     // AI Generation
     Route::post('/ai/generate', [AIController::class, 'generate']);

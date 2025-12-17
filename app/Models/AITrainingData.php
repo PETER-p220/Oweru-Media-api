@@ -10,6 +10,8 @@ class AITrainingData extends Model
 {
     use HasFactory;
 
+    protected $table = 'ai_training_data';
+
     protected $fillable = [
         'post_id',
         'category',

@@ -17,6 +17,9 @@ class Post extends Model
         'post_type',
         'title',
         'description',
+        'status',
+        'moderated_by',
+        'moderation_note',
         'ai_generated',
         'metadata',
         'performance_score',
@@ -25,11 +28,17 @@ class Post extends Model
     protected $casts = [
         'metadata' => 'array',
         'ai_generated' => 'boolean',
+        'moderated_by' => 'integer',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function moderator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
     }
 
     public function media(): HasMany
