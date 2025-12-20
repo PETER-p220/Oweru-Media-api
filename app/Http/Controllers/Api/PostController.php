@@ -87,8 +87,10 @@ class PostController extends Controller
 
     public function update(Request $request, Post $post)
     {
-        // Check if user owns the post
-        if ($post->user_id !== auth()->id()) {
+        $user = $request->user();
+        
+        // Allow admins to update any post, or users to update their own posts
+        if (!$user->isAdmin() && $post->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -112,8 +114,10 @@ class PostController extends Controller
 
     public function destroy(Post $post)
     {
-        // Check if user owns the post
-        if ($post->user_id !== auth()->id()) {
+        $user = auth()->user();
+        
+        // Allow admins to delete any post, or users to delete their own posts
+        if (!$user->isAdmin() && $post->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -175,6 +179,28 @@ class PostController extends Controller
         ]);
 
         return response()->json($post->load(['user', 'media', 'moderator']));
+    }
+
+    /**
+     * Public endpoint to get only approved posts
+     * This is accessible without authentication for the home page
+     */
+    public function getApproved(Request $request)
+    {
+        try {
+            $posts = Post::with(['media'])
+                ->where('status', 'approved')
+                ->latest()
+                ->paginate(15);
+            
+            return response()->json($posts);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching approved posts: ' . $e->getMessage());
+            return response()->json([
+                'data' => [],
+                'message' => 'Error fetching posts: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
 
