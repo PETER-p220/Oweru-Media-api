@@ -4,12 +4,14 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\AIController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/posts/approved', [PostController::class, 'getApproved']); // Public endpoint for approved posts
+Route::post('/contact', [ContactController::class, 'submit']); // Public contact form endpoint
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -31,5 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Media
     Route::post('/media/upload', [MediaController::class, 'upload']);
     Route::delete('/media/{id}', [MediaController::class, 'destroy']);
+    
+    // Contacts (Admin & Moderator only)
+    Route::get('/contacts', [ContactController::class, 'index']);
+    Route::get('/contacts/{id}', [ContactController::class, 'show']);
 });
 
