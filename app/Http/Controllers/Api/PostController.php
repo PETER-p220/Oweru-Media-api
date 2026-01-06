@@ -202,5 +202,32 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Public endpoint to get a single approved post by ID
+     * This is accessible without authentication for sharing posts
+     */
+    public function getApprovedPost($id)
+    {
+        try {
+            $post = Post::with(['media'])
+                ->where('status', 'approved')
+                ->where('id', $id)
+                ->first();
+            
+            if (!$post) {
+                return response()->json([
+                    'message' => 'Post not found or not approved'
+                ], 404);
+            }
+            
+            return response()->json($post);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching approved post: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching post: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/posts/approved', [PostController::class, 'getApproved']); // Public endpoint for approved posts
+Route::get('/posts/approved/{id}', [PostController::class, 'getApprovedPost']); // Public endpoint for single approved post
 Route::post('/contact', [ContactController::class, 'submit']); // Public contact form endpoint
 
 // Protected routes
