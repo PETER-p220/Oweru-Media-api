@@ -40,3 +40,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/contacts/{id}', [ContactController::class, 'show']);
 });
 
+Route::post('/api/instagram/post', [InstagramController::class, 'createPost']);
