@@ -42,7 +42,7 @@ class Media extends Model
             $scheme = $parsedUrl['scheme'] ?? 'http';
             $host = $parsedUrl['host'];
             $path = $parsedUrl['path'] ?? '';
-            $baseUrl = "{$scheme}://{$host}:8081{$path}";
+            $baseUrl = "{$scheme}://{$host}:8000{$path}";
         }
         
         // Construct URL manually to ensure correct format

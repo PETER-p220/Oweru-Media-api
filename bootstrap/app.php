@@ -12,7 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Add CORS middleware
+        // Add custom CORS middleware for API routes
+        $middleware->group('api', [
+            \App\Http\Middleware\CorsMiddleware::class,
+        ]);
+        
+        // Keep the default CORS middleware for web routes
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
