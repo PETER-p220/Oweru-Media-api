@@ -24,6 +24,11 @@ class PostController extends Controller
 
         $posts = $query->paginate(15);
         
+        // Debug: Log what we're returning
+        \Log::info('Index method called with status:', ['status' => $status]);
+        \Log::info('Posts count:', ['count' => $posts->count()]);
+        \Log::info('Posts data:', ['posts' => $posts->items()]);
+        
         return response()->json($posts);
     }
 
@@ -149,11 +154,17 @@ class PostController extends Controller
         return response()->json($posts);
     }
 
-    public function approve(Post $post, Request $request)
+    public function approve(Request $request, $postId)
     {
         $user = $request->user();
         if (! $user || ! $user->isModerator()) {
             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Find post manually
+        $post = Post::find($postId);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found'], 404);
         }
 
         $post->update([
@@ -162,14 +173,20 @@ class PostController extends Controller
             'moderation_note' => $request->input('moderation_note'),
         ]);
 
-        return response()->json($post->load(['user', 'media', 'moderator']));
+        return response()->json(['message' => 'Post approved successfully']);
     }
 
-    public function reject(Post $post, Request $request)
+    public function reject(Request $request, $postId)
     {
         $user = $request->user();
         if (! $user || ! $user->isModerator()) {
             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Find post manually
+        $post = Post::find($postId);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found'], 404);
         }
 
         $post->update([
@@ -178,7 +195,7 @@ class PostController extends Controller
             'moderation_note' => $request->input('moderation_note'),
         ]);
 
-        return response()->json($post->load(['user', 'media', 'moderator']));
+        return response()->json(['message' => 'Post rejected successfully']);
     }
 
     /**

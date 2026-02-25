@@ -16,7 +16,7 @@ return [
     */
 
     'stateful' => array_filter(array_merge(
-        explode(',', env('SANCTUM_STATEFUL_DOMAINS', 'localhost,localhost:3000,localhost:5173,127.0.0.1,127.0.0.1:8000,::1')),
+        explode(',', env('SANCTUM_STATEFUL_DOMAINS', 'localhost,localhost:3000,localhost:5173,http://31.97.176.48:8081,127.0.0.1,127.0.0.1:8000,::1')),
         env('FRONTEND_URL') ? [parse_url(env('FRONTEND_URL'), PHP_URL_HOST)] : []
     )),
 
