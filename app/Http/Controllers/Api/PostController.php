@@ -199,6 +199,28 @@ class PostController extends Controller
     }
 
     /**
+     * Public endpoint to get pending posts for moderators
+     * This is accessible without authentication for moderator dashboard
+     */
+    public function getPending(Request $request)
+    {
+        try {
+            $posts = Post::with(['user', 'media', 'moderator'])
+                ->where('status', 'pending')
+                ->latest()
+                ->paginate(15);
+            
+            return response()->json($posts);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching pending posts: ' . $e->getMessage());
+            return response()->json([
+                'data' => [],
+                'message' => 'Error fetching posts: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Public endpoint to get only approved posts
      * This is accessible without authentication for the home page
      */
