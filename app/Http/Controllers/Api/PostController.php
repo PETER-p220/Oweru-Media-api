@@ -11,25 +11,34 @@ class PostController extends Controller
 {
     public function index(Request $request)
     {
-        $status = $request->query('status');
+        try {
+            $status = $request->query('status');
 
-        $query = Post::with(['user', 'media', 'moderator'])->latest();
+            $query = Post::with(['user', 'media', 'moderator'])->latest();
 
-        // Only filter by status if explicitly provided and not 'all'
-        // For admin/moderator views, show all posts when status is 'all'
-        if ($status && $status !== 'all') {
-            $query->where('status', $status);
+            // Only filter by status if explicitly provided and not 'all'
+            // For admin/moderator views, show all posts when status is 'all'
+            if ($status && $status !== 'all') {
+                $query->where('status', $status);
+            }
+            // If status is 'all' or not provided, show all posts (no status filter)
+
+            $posts = $query->paginate(15);
+            
+            // Debug: Log what we're returning
+            \Log::info('Index method called with status:', ['status' => $status]);
+            \Log::info('Posts count:', ['count' => $posts->count()]);
+            \Log::info('Posts data sample:', ['posts' => $posts->take(3)->toArray()]);
+            
+            return response()->json($posts);
+        } catch (\Exception $e) {
+            \Log::error('Error in PostController@index: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'message' => 'Error fetching posts: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
         }
-        // If status is 'all' or not provided, show all posts (no status filter)
-
-        $posts = $query->paginate(15);
-        
-        // Debug: Log what we're returning
-        \Log::info('Index method called with status:', ['status' => $status]);
-        \Log::info('Posts count:', ['count' => $posts->count()]);
-        \Log::info('Posts data:', ['posts' => $posts->items()]);
-        
-        return response()->json($posts);
     }
 
     public function store(Request $request)
