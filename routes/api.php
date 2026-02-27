@@ -14,6 +14,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/posts/approved', [PostController::class, 'getApproved']); // Public endpoint for approved posts
 Route::get('/posts/approved/{id}', [PostController::class, 'getApprovedPost']); // Public endpoint for single approved post
 Route::get('/posts/pending', [PostController::class, 'getPending']); // Public endpoint for pending posts (for moderators)
+Route::get('/stats', [PostController::class, 'getStats']); // Public endpoint for basic statistics
 Route::post('/contact', [ContactController::class, 'submit']); // Public contact form endpoint
 
 // Instagram API routes (public for now, but should be protected in production)

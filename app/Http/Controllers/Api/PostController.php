@@ -268,5 +268,32 @@ class PostController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Public endpoint to get basic statistics
+     */
+    public function getStats(Request $request)
+    {
+        try {
+            $totalPosts = Post::count();
+            $approvedPosts = Post::where('status', 'approved')->count();
+            $pendingPosts = Post::where('status', 'pending')->count();
+            $rejectedPosts = Post::where('status', 'rejected')->count();
+            
+            return response()->json([
+                'totalPosts' => $totalPosts,
+                'approvedPosts' => $approvedPosts,
+                'pendingPosts' => $pendingPosts,
+                'rejectedPosts' => $rejectedPosts,
+                'totalCategories' => 6, // Fixed number of categories
+                'recentPosts' => min(5, $approvedPosts) // Count of recent approved posts (max 5)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching stats: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching statistics: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 
