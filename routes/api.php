@@ -114,13 +114,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/ai/improve', [AIController::class, 'improve']);
     Route::get('/ai/suggestions/{category}', [AIController::class, 'getSuggestions']);
     
-    
     // Contacts (Admin & Moderator only)
     Route::get('/contacts', [ContactController::class, 'index']);
     Route::get('/contacts/{id}', [ContactController::class, 'show']);
-});
-// Media routes
+    
+    // Media routes
     Route::post('/media/upload', [MediaController::class, 'upload']);
     Route::get('/media/download', [MediaController::class, 'download']);
     Route::delete('/media/{id}', [MediaController::class, 'destroy']);
-    
+});
