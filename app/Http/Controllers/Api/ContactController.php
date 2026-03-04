@@ -22,8 +22,7 @@ class ContactController extends Controller
         // Store the contact message
         $contact = Contact::create($validated);
 
-        // Optionally send email notification (you can configure this later)
-        // Mail::to('info@oweru.com')->send(new ContactFormMail($contact));
+        Mail::to('info@oweru.com')->send(new ContactFormMail($contact));
 
         return response()->json([
             'message' => 'Thank you for your message! We\'ll get back to you soon.',
