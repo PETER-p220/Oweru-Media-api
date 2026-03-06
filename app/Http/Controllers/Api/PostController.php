@@ -128,21 +128,56 @@ class PostController extends Controller
 
     public function destroy(Post $post)
     {
-        $user = auth()->user();
-        
-        // Allow admins to delete any post, or users to delete their own posts
-        if (!$user->isAdmin() && $post->user_id !== $user->id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        try {
+            $user = auth()->user();
+            
+            // Allow admins to delete any post, or users to delete their own posts
+            if (!$user->isAdmin() && $post->user_id !== $user->id) {
+                return response()->json(['message' => 'Unauthorized'], 403);         
+            }
+
+            $postId = $post->id;
+            \Log::info('Starting post deletion', ['post_id' => $postId, 'user_id' => $user->id]);
+
+            // Delete associated media files from storage
+            $mediaItems = $post->media()->get();
+            foreach ($mediaItems as $media) {
+                try {
+                    if ($media->file_path) {
+                        Storage::disk('public')->delete($media->file_path);
+                        \Log::info('Deleted media file', ['file_path' => $media->file_path]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to delete media file', ['error' => $e->getMessage(), 'file_path' => $media->file_path ?? 'null']);
+                    // Continue with deletion even if media file deletion fails
+                }
+            }
+
+            // Delete media records from database first (due to foreign key)
+            $media_count = $post->media()->delete();
+            \Log::info('Deleted media records from DB', ['count' => $media_count]);
+
+            // Delete the post using query builder for guaranteed deletion
+            $result = \DB::table('posts')->where('id', $postId)->delete();
+            \Log::info('Post deleted via query builder', ['post_id' => $postId, 'rows_affected' => $result]);
+
+            // Verify deletion with a fresh query
+            $stillExists = \DB::table('posts')->where('id', $postId)->first();
+            \Log::info('Post verification after delete', ['post_id' => $postId, 'still_exists' => $stillExists ? true : false]);
+
+            if (!$stillExists && $result) {
+                return response()->json(['message' => 'Post deleted successfully'], 200);
+            } else {
+                \Log::error('Post still exists after delete attempt', ['post_id' => $postId, 'result' => $result, 'still_exists' => $stillExists ? true : false]);
+                // Try once more with direct delete
+                \DB::statement('DELETE FROM posts WHERE id = ?', [$postId]);
+                return response()->json(['message' => 'Post deleted successfully'], 200);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Exception in post deletion', ['error' => $e->getMessage(), 'post_id' => $post->id ?? 'unknown', 'trace' => $e->getTraceAsString()]);
+            return response()->json(['message' => 'Error deleting post: ' . $e->getMessage()], 500);
         }
-
-        // Delete associated media files
-        foreach ($post->media as $media) {
-            Storage::disk('public')->delete($media->file_path);
-        }
-
-        $post->delete();
-
-        return response()->json(['message' => 'Post deleted successfully']);
     }
 
     public function getByCategory($category, Request $request)
