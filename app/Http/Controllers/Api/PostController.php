@@ -159,31 +159,29 @@ class PostController extends Controller
                 }
 
                 // Delete media records from database
-                $media_count = $post->media()->forceDelete();
+                $media_count = $post->media()->delete();
                 \Log::info('Media records deleted from DB', ['count' => $media_count]);
 
-                // Force delete the post (in case of soft deletes)
-                $postDeleted = $post->forceDelete();
-                \Log::info('Post forceDelete result', ['post_id' => $postId, 'deleted' => $postDeleted]);
+                // Delete the post - regular delete since no soft deletes
+                $postDeleted = $post->delete();
+                \Log::info('Post delete result', ['post_id' => $postId, 'deleted' => $postDeleted]);
 
                 // Commit the transaction
                 \DB::commit();
                 \Log::info('Transaction committed successfully', ['post_id' => $postId]);
 
-                // Verify deletion
-                $checkPost = Post::withoutTrashed()->where('id', $postId)->first();
+                // Verify deletion using direct database query
                 $checkDB = \DB::table('posts')->where('id', $postId)->first();
                 \Log::info('Post verification after transaction', [
                     'post_id' => $postId,
-                    'exists_eloquent' => $checkPost ? true : false,
-                    'exists_db' => $checkDB ? true : false
+                    'exists_in_db' => $checkDB ? true : false
                 ]);
 
                 return response()->json(['message' => 'Post deleted successfully'], 200);
 
             } catch (\Exception $e) {
                 \DB::rollBack();
-                \Log::error('Transaction rollback due to error', ['error' => $e->getMessage(), 'post_id' => $postId]);
+                \Log::error('Transaction rollback due to error', ['error' => $e->getMessage(), 'post_id' => $postId, 'trace' => $e->getTraceAsString()]);
                 return response()->json(['message' => 'Error during deletion: ' . $e->getMessage()], 500);
             }
 
