@@ -137,45 +137,62 @@ class PostController extends Controller
             }
 
             $postId = $post->id;
-            \Log::info('Starting post deletion', ['post_id' => $postId, 'user_id' => $user->id]);
+            \Log::info('=== POST DELETION START ===', ['post_id' => $postId, 'user_id' => $user->id]);
 
-            // Delete associated media files from storage
-            $mediaItems = $post->media()->get();
-            foreach ($mediaItems as $media) {
-                try {
-                    if ($media->file_path) {
-                        Storage::disk('public')->delete($media->file_path);
-                        \Log::info('Deleted media file', ['file_path' => $media->file_path]);
+            // Use database transaction to ensure all operations complete or none do
+            \DB::beginTransaction();
+
+            try {
+                // Delete associated media files from storage
+                $mediaItems = $post->media()->get();
+                \Log::info('Media items found', ['count' => $mediaItems->count()]);
+                
+                foreach ($mediaItems as $media) {
+                    try {
+                        if ($media->file_path) {
+                            $deleted = Storage::disk('public')->delete($media->file_path);
+                            \Log::info('Media file delete result', ['file_path' => $media->file_path, 'deleted' => $deleted]);
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to delete media file', ['error' => $e->getMessage(), 'file_path' => $media->file_path ?? 'null']);
                     }
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to delete media file', ['error' => $e->getMessage(), 'file_path' => $media->file_path ?? 'null']);
-                    // Continue with deletion even if media file deletion fails
                 }
-            }
 
-            // Delete media records from database first (due to foreign key)
-            $media_count = $post->media()->delete();
-            \Log::info('Deleted media records from DB', ['count' => $media_count]);
+                // Delete media records from database
+                $media_count = $post->media()->forceDelete();
+                \Log::info('Media records deleted from DB', ['count' => $media_count]);
 
-            // Delete the post using query builder for guaranteed deletion
-            $result = \DB::table('posts')->where('id', $postId)->delete();
-            \Log::info('Post deleted via query builder', ['post_id' => $postId, 'rows_affected' => $result]);
+                // Force delete the post (in case of soft deletes)
+                $postDeleted = $post->forceDelete();
+                \Log::info('Post forceDelete result', ['post_id' => $postId, 'deleted' => $postDeleted]);
 
-            // Verify deletion with a fresh query
-            $stillExists = \DB::table('posts')->where('id', $postId)->first();
-            \Log::info('Post verification after delete', ['post_id' => $postId, 'still_exists' => $stillExists ? true : false]);
+                // Commit the transaction
+                \DB::commit();
+                \Log::info('Transaction committed successfully', ['post_id' => $postId]);
 
-            if (!$stillExists && $result) {
+                // Verify deletion
+                $checkPost = Post::withoutTrashed()->where('id', $postId)->first();
+                $checkDB = \DB::table('posts')->where('id', $postId)->first();
+                \Log::info('Post verification after transaction', [
+                    'post_id' => $postId,
+                    'exists_eloquent' => $checkPost ? true : false,
+                    'exists_db' => $checkDB ? true : false
+                ]);
+
                 return response()->json(['message' => 'Post deleted successfully'], 200);
-            } else {
-                \Log::error('Post still exists after delete attempt', ['post_id' => $postId, 'result' => $result, 'still_exists' => $stillExists ? true : false]);
-                // Try once more with direct delete
-                \DB::statement('DELETE FROM posts WHERE id = ?', [$postId]);
-                return response()->json(['message' => 'Post deleted successfully'], 200);
+
+            } catch (\Exception $e) {
+                \DB::rollBack();
+                \Log::error('Transaction rollback due to error', ['error' => $e->getMessage(), 'post_id' => $postId]);
+                return response()->json(['message' => 'Error during deletion: ' . $e->getMessage()], 500);
             }
 
         } catch (\Exception $e) {
-            \Log::error('Exception in post deletion', ['error' => $e->getMessage(), 'post_id' => $post->id ?? 'unknown', 'trace' => $e->getTraceAsString()]);
+            \Log::error('Exception in post deletion', [
+                'error' => $e->getMessage(),
+                'post_id' => $post->id ?? 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['message' => 'Error deleting post: ' . $e->getMessage()], 500);
         }
     }
