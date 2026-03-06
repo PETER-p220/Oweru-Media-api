@@ -134,11 +134,24 @@ class PostController extends Controller
                 }
             }
 
-            // Delete media records
-            $post->media()->delete();
+            // Delete media records using raw SQL
+            \DB::table('media')->where('post_id', $postId)->delete();
 
-            // Delete the post — forceDelete() works whether or not SoftDeletes is on the model
-            $post->forceDelete();
+            // Delete the post using raw SQL to ensure it actually deletes
+            $result = \DB::table('posts')->where('id', $postId)->delete();
+            
+            \Log::info('Post deleted via raw SQL', [
+                'post_id' => $postId,
+                'rows_affected' => $result
+            ]);
+
+            // Verify the post is actually gone
+            $stillExists = \DB::table('posts')->where('id', $postId)->first();
+            if ($stillExists) {
+                \DB::rollBack();
+                \Log::error('Post still exists after delete attempt', ['post_id' => $postId]);
+                return response()->json(['message' => 'Post deletion verification failed'], 500);
+            }
 
             \DB::commit();
 
